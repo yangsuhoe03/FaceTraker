@@ -121,20 +121,17 @@ class FaceLandmarkerView(context: Context) : FrameLayout(context) {
         val cameraProvider = cameraProvider ?: return
         val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
 
-        // 해상도 안전 설정 (VGA)
-        val targetResolution = android.util.Size(640, 480)
-
         val preview = Preview.Builder()
-            .setTargetResolution(targetResolution)
+            .setTargetAspectRatio(androidx.camera.core.AspectRatio.RATIO_4_3)
             .setTargetRotation(previewView.display?.rotation ?: 0)
             .build()
         preview.setSurfaceProvider(previewView.surfaceProvider)
 
         val imageAnalyzer = ImageAnalysis.Builder()
-            .setTargetResolution(targetResolution)
+            .setTargetAspectRatio(androidx.camera.core.AspectRatio.RATIO_4_3)
             .setTargetRotation(previewView.display?.rotation ?: 0)
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-            .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
+            // [중요] 호환성이 낮은 RGBA_8888 포맷 강제 설정을 제거합니다.
             .build()
             .also {
                 it.setAnalyzer(backgroundExecutor) { image ->
@@ -144,49 +141,56 @@ class FaceLandmarkerView(context: Context) : FrameLayout(context) {
 
         try {
             cameraProvider.unbindAll()
-            
-            val currentActivity = (context as? ReactContext)?.currentActivity
-            val lifecycleOwner = currentActivity as? LifecycleOwner
-                ?: (context as? LifecycleOwner)
-            
-            Log.d(TAG, "bindCameraUseCases: lifecycleOwner = $lifecycleOwner")
-            
-            if (lifecycleOwner != null) {
-                // 생명주기 관찰
-                lifecycleOwner.lifecycle.addObserver(lifecycleObserver)
-                Log.d(TAG, "bindCameraUseCases: Current Lifecycle State = ${lifecycleOwner.lifecycle.currentState}")
-
-                cameraProvider.bindToLifecycle(
-                    lifecycleOwner,
-                    cameraSelector,
-                    preview,
-                    imageAnalyzer
-                )
-                Log.d(TAG, "bindCameraUseCases: Successfully bound lifecycle.")
-            } else {
-                Log.e(TAG, "bindCameraUseCases: FAILED! Could not find LifecycleOwner.")
-            }
-
-        } catch (exc: Exception) {
-            Log.e(TAG, "bindCameraUseCases: FAILED! Exception: ${exc.message}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Unbind failed", e)
         }
+
+        // [단계적 바인딩] 먼저 Preview만 연결하여 화면을 띄웁니다.
+        previewView.postDelayed({
+            try {
+                val currentActivity = (context as? ReactContext)?.currentActivity
+                val lifecycleOwner = currentActivity as? LifecycleOwner ?: (context as? LifecycleOwner)
+                
+                if (lifecycleOwner != null && cameraProvider != null) {
+                    Log.d(TAG, "bindCameraUseCases: Step 1 - Binding PREVIEW")
+                    cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, preview)
+                    
+                    // 다시 1초 뒤에 Analyzer를 추가로 연결합니다. (하드웨어 부하 분산)
+                    previewView.postDelayed({
+                        try {
+                            Log.d(TAG, "bindCameraUseCases: Step 2 - Binding ANALYZER")
+                            cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, imageAnalyzer)
+                            Log.d(TAG, "bindCameraUseCases: All cases bound successfully.")
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Step 2 failed", e)
+                        }
+                    }, 1000)
+
+                }
+            } catch (exc: Exception) {
+                Log.e(TAG, "Step 1 failed", exc)
+            }
+        }, 500)
     }
 
     private fun detectLivestreamFrame(imageProxy: ImageProxy) {
-        // 프레임 도착 로그
-        Log.d(TAG, "detectLivestreamFrame: Frame arrived! Timestamp: ${imageProxy.imageInfo.timestamp}")
-        
         if (faceLandmarker == null) {
-            Log.w(TAG, "detectLivestreamFrame: faceLandmarker is null, skipping frame.")
             imageProxy.close()
             return
         }
 
-        val bitmapBuffer = BitmapImageBuilder(imageProxy.toBitmap()).build()
-        val timestampMs = imageProxy.imageInfo.timestamp / 1000000 // ns to ms
-        
-        faceLandmarker?.detectAsync(bitmapBuffer, timestampMs)
-        imageProxy.close()
+        try {
+            // imageProxy.toBitmap()은 내부적으로 YUV를 변환해주므로 안전합니다.
+            val bitmap = imageProxy.toBitmap()
+            val bitmapBuffer = BitmapImageBuilder(bitmap).build()
+            val timestampMs = imageProxy.imageInfo.timestamp / 1000000 
+            
+            faceLandmarker?.detectAsync(bitmapBuffer, timestampMs)
+        } catch (e: Exception) {
+            Log.e(TAG, "Detection error: ${e.message}")
+        } finally {
+            imageProxy.close()
+        }
     }
 
     private fun returnLivestreamResult(result: FaceLandmarkerResult, input: MPImage) {
