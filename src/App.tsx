@@ -1,76 +1,72 @@
 import React, { useEffect, useState } from 'react';
-import {
-  StyleSheet,
-  Text,
-  View,
-  PermissionsAndroid,
-  Platform,
-  Alert,
-} from 'react-native';
-import NativeFaceLandmarkerView from './components/NativeFaceLandmarkerView';
+import { StyleSheet, View, Text, PermissionsAndroid, Platform } from 'react-native';
+import { 
+  Camera, 
+  useCameraDevice, 
+  useFrameProcessor, 
+  runAtTargetFps 
+} from 'react-native-vision-camera';
+import { VisionCameraProxy, Frame } from 'react-native-vision-camera';
+import { Worklets } from 'react-native-worklets-core';
+
+// [중요] Worklets용 함수 선언
+// UI 스레드에서 실행될 함수
+function updateFaceData(setNosePos: any, x: number, y: number) {
+  'worklet';
+  runOnJS(setNosePos)({ x, y });
+}
+
+// React Native Reanimated의 runOnJS가 없다면 직접 만들어야 할 수도 있지만, 
+// 여기서는 간단히 console.log로 테스트하거나 Worklets.createRunOnJS를 사용.
+import { runOnJS } from 'react-native-reanimated'; 
+// Reanimated가 없다면 설치해야 합니다. 일단 설치되어 있다고 가정하거나 
+// Vision Camera는 기본적으로 Reanimated 의존성을 가질 수 있음. 
+// 만약 에러나면 Reanimated 설치 필요.
 
 const App = () => {
+  const device = useCameraDevice('front');
   const [hasPermission, setHasPermission] = useState(false);
   const [nosePos, setNosePos] = useState({ x: 0, y: 0 });
 
-  // 앱 시작 시 카메라 권한 요청
   useEffect(() => {
-    requestCameraPermission();
+    const checkPermission = async () => {
+      const status = await Camera.requestCameraPermission();
+      setHasPermission(status === 'granted');
+    };
+    checkPermission();
   }, []);
 
-  const requestCameraPermission = async () => {
-    if (Platform.OS === 'android') {
-      try {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.CAMERA,
-          {
-            title: '카메라 권한 요청',
-            message: '얼굴 인식을 위해 카메라 권한이 필요합니다.',
-            buttonPositive: '허용',
-          },
-        );
-        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-          setHasPermission(true);
-        } else {
-          Alert.alert('권한 거부', '카메라 권한이 필요합니다.');
-        }
-      } catch (err) {
-        console.warn(err);
-      }
-    }
-  };
+  const frameProcessor = useFrameProcessor((frame) => {
+    'worklet';
+    
+    // 네이티브 플러그인 호출
+    // @ts-ignore
+    const result = frame.detectFace(); 
 
-  const handleFaceDetected = (event: any) => {
-    const { noseX, noseY } = event.nativeEvent;
-    setNosePos({ x: noseX, y: noseY });
-  };
+    if (result) {
+      console.log(`Detected face: ${result.noseX}, ${result.noseY}`);
+      // UI 업데이트 (너무 자주 하면 느려지므로 주의)
+      runOnJS(setNosePos)({ x: result.noseX, y: result.noseY });
+    }
+  }, []);
+
+  if (!hasPermission) return <Text>No Permission</Text>;
+  if (device == null) return <Text>No Device</Text>;
 
   return (
     <View style={styles.container}>
-      {hasPermission ? (
-        <View style={styles.cameraContainer}>
-          {/* 네이티브 카메라 뷰: absoluteFillObject로 꽉 채움 */}
-          <NativeFaceLandmarkerView
-            style={StyleSheet.absoluteFillObject}
-            onFaceDetected={handleFaceDetected}
-          />
-          
-          {/* 정보 표시 레이어 */}
-          <View style={styles.infoBox}>
-            <Text style={styles.infoText}>상태: AI 엔진 가동 중</Text>
-            <Text style={styles.dataText}>
-              코 좌표: {nosePos.x.toFixed(4)}, {nosePos.y.toFixed(4)}
-            </Text>
-            {nosePos.x !== 0 && (
-              <Text style={{color: '#ff0', fontWeight: 'bold'}}>얼굴 감지됨!</Text>
-            )}
-          </View>
-        </View>
-      ) : (
-        <View style={styles.centered}>
-          <Text style={{color: 'white'}}>카메라 권한 승인이 필요합니다.</Text>
-        </View>
-      )}
+      <Camera
+        style={StyleSheet.absoluteFill}
+        device={device}
+        isActive={true}
+        frameProcessor={frameProcessor}
+        pixelFormat="yuv" // 호환성 최강
+      />
+      <View style={styles.infoBox}>
+        <Text style={styles.text}>
+          코 위치: {nosePos.x.toFixed(2)}, {nosePos.y.toFixed(2)}
+        </Text>
+      </View>
     </View>
   );
 };
@@ -78,38 +74,19 @@ const App = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
-  },
-  cameraContainer: {
-    flex: 1,
-    backgroundColor: '#111', // 검은 화면인지 확인용 배경색
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: 'black',
   },
   infoBox: {
     position: 'absolute',
-    top: 60,
+    top: 50,
     left: 20,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    padding: 15,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#444',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: 10,
   },
-  infoText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  dataText: {
-    color: '#0f0',
-    fontSize: 14,
-    marginTop: 5,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-  },
+  text: {
+    color: 'white',
+    fontSize: 20,
+  }
 });
 
 export default App;
