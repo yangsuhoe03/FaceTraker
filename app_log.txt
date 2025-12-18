@@ -1,0 +1,16 @@
+--------- beginning of main
+12-18 16:28:03.886  5177  5177 I com.facetestapp: Late-enabling -Xcheck:jni
+12-18 16:28:03.907  5177  5177 I com.facetestapp: Using CollectorTypeCC GC.
+12-18 16:28:04.373  5177  5177 I com.facetestapp: hiddenapi: Accessing hidden method Landroid/view/ViewGroup;->makeOptionalFitsSystemWindows()V (runtime_flags=0, domain=platform, api=unsupported) from Landroidx/appcompat/widget/ViewUtils; (domain=app) using reflection: allowed
+12-18 16:28:04.688  5177  5181 I com.facetestapp: Compiler allocated 7439KB to compile void android.view.ViewRootImpl.performTraversals()
+12-18 16:28:04.793  5177  5181 I com.facetestapp: Compiler allocated 4287KB to compile void android.widget.TextView.<init>(android.content.Context, android.util.AttributeSet, int, int)
+12-18 16:28:05.152  5177  5245 W com.facetestapp: Failed to find entry 'classes.dex': Entry not found
+12-18 16:28:05.154  5177  5245 W com.facetestapp: Loading /data/app/~~C8QX_M2IBiofNHjwW56HVw==/com.google.android.webview-DXK9PgKapMbcMdURDf-M9A==/oat/arm64/base.odex non-executable as it requires an image which we failed to load
+12-18 16:28:14.015  5177  5184 W com.facetestapp: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~C8QX_M2IBiofNHjwW56HVw==/com.google.android.webview-DXK9PgKapMbcMdURDf-M9A==/base.apk' with 2 weak references
+12-18 16:28:17.294  5580  5580 I com.facetestapp: Late-enabling -Xcheck:jni
+12-18 16:28:17.317  5580  5580 I com.facetestapp: Using CollectorTypeCC GC.
+12-18 16:28:17.760  5580  5580 I com.facetestapp: hiddenapi: Accessing hidden method Landroid/view/ViewGroup;->makeOptionalFitsSystemWindows()V (runtime_flags=0, domain=platform, api=unsupported) from Landroidx/appcompat/widget/ViewUtils; (domain=app) using reflection: allowed
+12-18 16:28:18.061  5580  5591 I com.facetestapp: Compiler allocated 4287KB to compile void android.widget.TextView.<init>(android.content.Context, android.util.AttributeSet, int, int)
+12-18 16:28:18.109  5580  5591 I com.facetestapp: Compiler allocated 7439KB to compile void android.view.ViewRootImpl.performTraversals()
+12-18 16:28:18.493  5580  5649 W com.facetestapp: Failed to find entry 'classes.dex': Entry not found
+12-18 16:28:18.496  5580  5649 W com.facetestapp: Loading /data/app/~~C8QX_M2IBiofNHjwW56HVw==/com.google.android.webview-DXK9PgKapMbcMdURDf-M9A==/oat/arm64/base.odex non-executable as it requires an image which we failed to load
