@@ -210,6 +210,19 @@ class FaceLandmarkerView(context: Context) : FrameLayout(context) {
                 val noseTip = firstFace[1]
                 params.putDouble("noseX", noseTip.x().toDouble())
                 params.putDouble("noseY", noseTip.y().toDouble())
+
+                // Iris landmarks
+                // 468: Left Iris Center
+                // 473: Right Iris Center
+                if (firstFace.size > 473) {
+                    val leftIris = firstFace[468]
+                    val rightIris = firstFace[473]
+
+                    params.putDouble("leftIrisX", leftIris.x().toDouble())
+                    params.putDouble("leftIrisY", leftIris.y().toDouble())
+                    params.putDouble("rightIrisX", rightIris.x().toDouble())
+                    params.putDouble("rightIrisY", rightIris.y().toDouble())
+                }
                 
                 val reactContext = context as? ReactContext
                 reactContext?.getJSModule(RCTEventEmitter::class.java)

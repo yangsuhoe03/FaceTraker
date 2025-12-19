@@ -7,6 +7,10 @@ interface FaceDetectedEvent {
   nativeEvent: {
     noseX: number;
     noseY: number;
+    leftIrisX?: number;
+    leftIrisY?: number;
+    rightIrisX?: number;
+    rightIrisY?: number;
   };
 }
 
