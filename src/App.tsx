@@ -12,6 +12,12 @@ import NativeFaceLandmarkerView from './components/NativeFaceLandmarkerView';
 const App = () => {
   const [hasPermission, setHasPermission] = useState(false);
   const [nosePos, setNosePos] = useState({ x: 0, y: 0 });
+  const [irisPos, setIrisPos] = useState({
+    leftX: 0,
+    leftY: 0,
+    rightX: 0,
+    rightY: 0,
+  });
 
   // 앱 시작 시 카메라 권한 요청
   useEffect(() => {
@@ -41,8 +47,21 @@ const App = () => {
   };
 
   const handleFaceDetected = (event: any) => {
-    const { noseX, noseY } = event.nativeEvent;
+    const {
+      noseX,
+      noseY,
+      leftIrisX = 0,
+      leftIrisY = 0,
+      rightIrisX = 0,
+      rightIrisY = 0,
+    } = event.nativeEvent;
     setNosePos({ x: noseX, y: noseY });
+    setIrisPos({
+      leftX: leftIrisX,
+      leftY: leftIrisY,
+      rightX: rightIrisX,
+      rightY: rightIrisY,
+    });
   };
 
   return (
@@ -60,6 +79,12 @@ const App = () => {
             <Text style={styles.infoText}>상태: AI 엔진 가동 중</Text>
             <Text style={styles.dataText}>
               코 좌표: {nosePos.x.toFixed(4)}, {nosePos.y.toFixed(4)}
+            </Text>
+            <Text style={styles.dataText}>
+              왼쪽 홍채: {irisPos.leftX.toFixed(4)}, {irisPos.leftY.toFixed(4)}
+            </Text>
+            <Text style={styles.dataText}>
+              오른쪽 홍채: {irisPos.rightX.toFixed(4)}, {irisPos.rightY.toFixed(4)}
             </Text>
             {nosePos.x !== 0 && (
               <Text style={{color: '#ff0', fontWeight: 'bold'}}>얼굴 감지됨!</Text>

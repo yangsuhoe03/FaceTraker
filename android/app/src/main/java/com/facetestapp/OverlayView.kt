@@ -20,6 +20,7 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
     private var results: FaceLandmarkerResult? = null
     private var linePaint = Paint()
     private var pointPaint = Paint()
+    private var irisPaint = Paint()
 
     private var scaleFactor: Float = 1f
     private var imageWidth: Int = 1
@@ -45,6 +46,10 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
         pointPaint.color = Color.YELLOW
         pointPaint.strokeWidth = 8F
         pointPaint.style = Paint.Style.FILL
+
+        irisPaint.color = Color.RED
+        irisPaint.strokeWidth = 10F
+        irisPaint.style = Paint.Style.FILL
     }
 
     override fun draw(canvas: Canvas) {
@@ -74,10 +79,16 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
         offsetX: Float,
         offsetY: Float
     ) {
-        faceLandmarks.forEach { landmark ->
+        faceLandmarks.forEachIndexed { index, landmark ->
             val x = landmark.x() * imageWidth * scaleFactor + offsetX
             val y = landmark.y() * imageHeight * scaleFactor + offsetY
-            canvas.drawPoint(x, y, pointPaint)
+
+            if (index == 468 || index == 473) {
+                // Iris centers
+                canvas.drawPoint(x, y, irisPaint)
+            } else {
+                canvas.drawPoint(x, y, pointPaint)
+            }
         }
     }
 

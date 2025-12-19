@@ -146,31 +146,25 @@ class FaceLandmarkerView(context: Context) : FrameLayout(context) {
         }
 
         // [단계적 바인딩] 먼저 Preview만 연결하여 화면을 띄웁니다.
-        previewView.postDelayed({
+        previewView.post({
             try {
                 val currentActivity = (context as? ReactContext)?.currentActivity
                 val lifecycleOwner = currentActivity as? LifecycleOwner ?: (context as? LifecycleOwner)
-                
-                if (lifecycleOwner != null && cameraProvider != null) {
-                    Log.d(TAG, "bindCameraUseCases: Step 1 - Binding PREVIEW")
-                    cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, preview)
-                    
-                    // 다시 1초 뒤에 Analyzer를 추가로 연결합니다. (하드웨어 부하 분산)
-                    previewView.postDelayed({
-                        try {
-                            Log.d(TAG, "bindCameraUseCases: Step 2 - Binding ANALYZER")
-                            cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, imageAnalyzer)
-                            Log.d(TAG, "bindCameraUseCases: All cases bound successfully.")
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Step 2 failed", e)
-                        }
-                    }, 1000)
 
+                if (lifecycleOwner != null && cameraProvider != null) {
+                    Log.d(TAG, "bindCameraUseCases: Binding Preview and Analyzer")
+                    cameraProvider.bindToLifecycle(
+                        lifecycleOwner,
+                        cameraSelector,
+                        preview,
+                        imageAnalyzer
+                    )
+                    Log.d(TAG, "bindCameraUseCases: All cases bound successfully.")
                 }
             } catch (exc: Exception) {
-                Log.e(TAG, "Step 1 failed", exc)
+                Log.e(TAG, "Binding failed", exc)
             }
-        }, 500)
+        })
     }
 
     private fun detectLivestreamFrame(imageProxy: ImageProxy) {
@@ -210,6 +204,19 @@ class FaceLandmarkerView(context: Context) : FrameLayout(context) {
                 val noseTip = firstFace[1]
                 params.putDouble("noseX", noseTip.x().toDouble())
                 params.putDouble("noseY", noseTip.y().toDouble())
+
+                // Iris landmarks
+                // 468: Left Iris Center
+                // 473: Right Iris Center
+                if (firstFace.size > 473) {
+                    val leftIris = firstFace[468]
+                    val rightIris = firstFace[473]
+
+                    params.putDouble("leftIrisX", leftIris.x().toDouble())
+                    params.putDouble("leftIrisY", leftIris.y().toDouble())
+                    params.putDouble("rightIrisX", rightIris.x().toDouble())
+                    params.putDouble("rightIrisY", rightIris.y().toDouble())
+                }
                 
                 val reactContext = context as? ReactContext
                 reactContext?.getJSModule(RCTEventEmitter::class.java)
